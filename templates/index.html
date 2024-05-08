@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ section.title }}
+{% endblock %}
+
+{% block header %}
+&gt; <a class="title" href="{{ section.permalink | safe}}">{{ section.title }}</a>
+{% endblock %}
+
+{% block content %}
+<div id="page">
+	{{ section.content | safe }}
+</div>
+
+<h1>recent posts</h1>
+<ul id="pages">
+	{% for page in section.pages %}
+	<li class="page"><span class="date">{{ page.date }}: </span> <a href="{{ page.permalink | safe }}">{{ page.title }}</a></li>
+	{% endfor %}
+</ul>
+{% endblock %}

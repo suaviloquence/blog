@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>{% block title %} {% endblock %}  | max's blog</title>
+		<link rel="stylesheet" href="/base.css" />
+	</head>
+	<body class="light">
+		<div id="content">
+			<header>
+				<a href="/">max's blog</a>
+				{% block header %} {% endblock %}
+			</header>
+			<article>
+				{% block content %} {% endblock %}
+			</article>
+			<footer>
+				<p>
+				<span id="heart">&lt;3</span> - <a href="https://github.com/suaviloquence/blog" target="_blank">source</a>
+				</p>
+			</footer>
+		</div>
+	</body>
+</html>
+

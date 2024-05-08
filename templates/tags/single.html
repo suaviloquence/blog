@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ term.name }}
+{% endblock title %}
+
+{% block header %}
+&gt; <a href="/{{ taxonomy.name | slugify }}">{{ taxonomy.name }}</a> &gt; <a class="title" href="{{ term.permalink | safe }}">{{ term.name }}</a>
+{% endblock header %}
+
+{% block content %}
+	<ul id="pages">
+		{% for page in term.pages %}
+		<li>
+			<span class="date">{{ page.date }}</span> <a href="{{ page.permalink | safe }}">{{ page.title }}</a>
+		</li>
+		{% endfor %}
+	</ul>
+{% endblock content %}

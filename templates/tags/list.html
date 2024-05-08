@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ taxonomy.name }}
+{% endblock title %}
+
+{% block header %}
+&gt; <a class="title" href="{{ current_url | safe }}">{{ taxonomy.name }}</a>
+{% endblock header %}
+
+{% block content %}
+
+<ul id="tag-list">
+{% for tag in terms %}
+	<li>
+		<h2><a href="{{ tag.permalink | safe }}">{{ tag.name }}</a></h2>
+		<ul class="pages">
+			{% for page in tag.pages | slice(end=3) %}
+			<li>
+				<span class="date">{{ page.date }}</span> <a href="{{ page.permalink | safe }}">{{ page.title }}</a>
+			</li>
+			{% endfor %}
+		</ul>
+	</li>
+{% endfor %}
+</ul>
+
+
+{% endblock content %}
