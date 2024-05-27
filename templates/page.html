@@ -1,52 +1,55 @@
-{% extends "base.html" %}
-
-{% block title %}
-{{ page.title }}
-{% endblock title %}
-
-{% block header %}
-&gt; <a class="title" href="{{ page.permalink | safe }}">{{ page.title }}</a>
-{% endblock header %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %} {{ page.title }} {% endblock title
+%} {% block header %} &gt;
+<a class="title" href="{{ page.permalink | safe }}">{{ page.title }}</a>
+{% endblock header %} {% block content %}
 <h2 id="subtitle">
-	<span class="date">{{ page.date }}</span>
-	{% if page.taxonomies.tags %}
-	| tags: 
-	<ul id="tags">
-		{% for tag in page.taxonomies.tags %}
-		<li><a href="/tags/{{ tag | slugify }}">{{ tag }}</a></li>
-		{% endfor %}
-	</ul>
-	{% endif %}
+    <span class="date">{{ page.date }}</span>
+    {% if page.taxonomies.tags %} | tags:
+    <ul id="tags">
+        {% for tag in page.taxonomies.tags %}
+        <li><a href="/tags/{{ tag | slugify }}">{{ tag }}</a></li>
+        {% endfor %}
+    </ul>
+    {% endif %}
 </h2>
 
 {% if page.toc %}
-	<div id="show-toc">
-		<input id="show-toc-box" type="checkbox"  />
-		<label for="show-toc-box">outline</label>
-	</div>
-	<div id="toc">
-		<ol>
-		{% for header in page.toc %}
-		<li>
-			<a href="{{ header.permalink | safe }}">{{ header.title }}</a>
-			{% if header.children %}
-			<ol>
-				{% for header in header.children %}
-				<li>
-					<a href="{{ header.permalink | safe }}">{{ header.title }}</a>
-				</li>
-				{% endfor %}
-			</ol>
-			{% endif %}
-		</li>
-		{% endfor %}
-		</ol>
-	</div>
+<div id="show-toc">
+    <input id="show-toc-box" type="checkbox" />
+    <label for="show-toc-box">outline</label>
+</div>
+<div id="toc">
+    <ol>
+        {% for header in page.toc %}
+        <li>
+            <a href="{{ header.permalink | safe }}">{{ header.title }}</a>
+            {% if header.children %}
+            <ol>
+                {% for header in header.children %}
+                <li>
+                    <a href="{{ header.permalink | safe }}"
+                        >{{ header.title }}</a
+                    >
+                </li>
+                {% endfor %}
+            </ol>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ol>
+</div>
+{% endif %} {% if page.extra.issue %}
+<h3 class="notice">
+    I'd love to hear any comments, suggestions, or questions you have! You can
+    post them publicly at
+    <a
+        href="https://github.com/suaviloquence/blog/issues/{{ page.extra.issue | safe }}"
+        target="_blank"
+        >this page's GitHub issue</a
+    >
+    or send me an email at <code>m at mcarr.one</code>
+</h3>
 {% endif %}
 
-<div id="page">
-	{{ page.content | safe }}
-</div>
+<div id="page">{{ page.content | safe }}</div>
 {% endblock content %}
