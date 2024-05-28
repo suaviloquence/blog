@@ -53,7 +53,7 @@ The [`[lints]`](https://rust-lang.github.io/rfcs/3389-manifest-lint.html) ([carg
 
 ## module/item attributes
 
-For rustc lints, you can add configuration like `#![allow(lint)]` outer attribute to a module as well as attributes like `#[warn(lint)]` on an inner item itself to apply that configuration to just the module/item. Currently, `cargo-semver-checks` has a less granular version of this by adding `#[doc(hidden)]` to an item to exempt it from semver guarantees, but adding this is a breaking change.
+For rustc lints, you can add configuration like `#![allow(lint)]` outer attribute to a module as well as attributes like `#[warn(lint)]` on an inner item itself to apply that configuration to just the module/item. Currently, `cargo-semver-checks` has a less granular version of this by adding <span class="nobr">`#[doc(hidden)]`</span> to an item to exempt it from semver guarantees, but adding this is a breaking change.
 
 ## lint groups
 
