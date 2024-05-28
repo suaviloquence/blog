@@ -19,7 +19,7 @@ The biggest part of configuring lints is to specify how big a problem it is when
 
 ## a secret fourth option
 
-There's another option in `rustc`, though, that is even stricter. If we `forbid` a lint, it's like a stricter version `deny`ing it. There are a [lot of ways](#configuration) to configure lints tools like `rustc` and `clippy`, and sometimes you `deny` a lint (such as the `unsafe-code` lint) at the module level, for example, but you can still `allow` or `warn` an individual `unsafe` block. If we want to prevent this from happening, we can `#![forbid(unsafe_code)]`, and this lint will now _always_ be an error, regardless[^forbid] of other configuration that would otherwise override a `deny` level.
+There's another option in `rustc`, though, that is even stricter. If we `forbid` a lint, it's like a stricter version of `deny`ing it. There are a [lot of ways](#configuration) to configure lints tools like `rustc` and `clippy`, and sometimes you `deny` a lint (such as the `unsafe-code` lint) at the module level, for example, but you can still `allow` or `warn` an individual `unsafe` block. If we want to prevent this from happening, we can `#![forbid(unsafe_code)]`, and this lint will now _always_ be an error, regardless[^forbid] of other configuration that would otherwise override a `deny` level.
 
 ## a fifth one?
 
