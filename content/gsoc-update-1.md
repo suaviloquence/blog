@@ -51,9 +51,9 @@ Here are the things I'm going to be working on after this:
 - **documentation/migration guide**: with a big new feature like this, we need lots of documentation for both users of `cargo-semver-checks` as a Rust library and as a binary tool, so I'm going to write even more on how people can use the new configuration in their own projects and code.
 - **clean up CLI output**: in adding warnings, there were definitely areas for incremental improvement in how `cargo-semver-checks` displays this information to the user, so I'm going to work on improving it and making it more consistent.
 - **other features**:
- - *CLI flags*: the ability to pass `--warn function_missing`, `--minor module_missing`, and like configuration to the `cargo-semver-checks` binary instead of/in addition to configuration in the `Cargo.toml` manifest
- - *lint groups*: the ability to configure multiple related lints at once (like in tools like `clippy`), for example a `suspicious` group of warn-by-default lints.
- - more features? What do you think is important for this tool to have? I'd love to hear what you think, in this blog's GitHub issue or on the project's [Zulip stream](https://rust-lang.zulipchat.com/#narrow/stream/421156-gsoc/topic/Project.3A.20Adding.20lint.20configuration.20to.20cargo-semver-checks)
+  - *CLI flags*: the ability to pass `--warn function_missing`, `--minor module_missing`, and like configuration to the `cargo-semver-checks` binary instead of/in addition to configuration in the `Cargo.toml` manifest
+  - *lint groups*: the ability to configure multiple related lints at once (like in tools like `clippy`), for example a `suspicious` group of warn-by-default lints.
+  - more features? What do you think is important for this tool to have? I'd love to hear what you think, in this blog's GitHub issue or on the project's [Zulip stream](https://rust-lang.zulipchat.com/#narrow/stream/421156-gsoc/topic/Project.3A.20Adding.20lint.20configuration.20to.20cargo-semver-checks)
 
 
 ## reflections
