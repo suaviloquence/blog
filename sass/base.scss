@@ -126,6 +126,12 @@
 			.nobr {
 			     white-space: nowrap
 			}
+
+      /* code block */
+      pre {
+        font-size: 1rem;
+        overflow: scroll;
+      }
 		}
 
 		#tag-list {
