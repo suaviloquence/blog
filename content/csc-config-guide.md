@@ -26,17 +26,17 @@ In the `Cargo.toml` manifest for the crate we're checking, add the `cargo-semver
 ```toml
 # ...
 [package.metadata.cargo-semver-checks.lints]
-function_missing = { level = "warn", required_update = "minor" }
+function_missing = { level = "warn", required-update = "minor" }
 ```
 
 To configure other lints, just add them as additional entries to that table.  Note that it is not required to configure *both* lint level and required version update, and you can use the shorthand `lint_id = "level"` to configure just the lint level:
 
 ```toml
 [package.metadata.cargo-semver-checks.lints]
-function_missing = { level = "warn", required_update = "minor" }
+function_missing = { level = "warn", required-update = "minor" }
 trait_now_doc_hidden = "allow" # shorthand to set just lint level to `allow`
-enum_variant_added = { level = "deny" } # leaves required_update as the default
-function_changed_abi = { required_update = "minor" } # leaves level as default
+enum_variant_added = { level = "deny" } # leaves required-update as the default
+function_changed_abi = { required-update = "minor" } # leaves level as default
 ```
 
 This table should be placed in the current/new `Cargo.toml` manifest, not the baseline/old manifest.  (this defaults to `./Cargo.toml` in the directory that `cargo-semver-checks` was invoked on, and can be configured to a different path with the `--manifest-path` CLI option).
@@ -47,7 +47,7 @@ It may also be helpful to configure these checks at the workspace level for mult
 
 ```toml
 [workspace.metadata.cargo-semver-checks.lints]
-function_missing = { level = "warn", required_update = "minor" }
+function_missing = { level = "warn", required-update = "minor" }
 ```
 
 Note that it is `workspace.metadata` and not `package.metadata`.  Then, to opt-in to these for each package that is being semver-checked, one of these keys to the *package* Cargo.toml:
@@ -72,7 +72,7 @@ When `workspace = true` is set, it is possible to override individual lint confi
 
 ```toml
 [workspace.metadata.cargo-semver-checks.lints]
-function_missing = { level = "warn", required_update = "minor" }
+function_missing = { level = "warn", required-update = "minor" }
 trait_now_doc_hidden = "warn"
 ```
 
@@ -82,10 +82,10 @@ and in the *package* Cargo.toml:
 [package.metadata.cargo-semver-checks.lints]
 workspace = true
 function_missing = "deny"
-trait_now_doc_hidden = { required_update = "major" }
+trait_now_doc_hidden = { required-update = "major" }
 ```
 
-Fields set in the package configuration override the workspace configuration.  Thus, the lint level for `function_missing` will be overridden to `deny`, and the workspace default `required_update` of `minor` will be used because it is not configured in the package.  Similarly, the lint level for `trait_now_doc_hidden` will be the workspace's `warn`, but the required update will be overridden in the package to a `major` version bump.
+Fields set in the package configuration override the workspace configuration.  Thus, the lint level for `function_missing` will be overridden to `deny`, and the workspace default `required-update` of `minor` will be used because it is not configured in the package.  Similarly, the lint level for `trait_now_doc_hidden` will be the workspace's `warn`, but the required update will be overridden in the package to a `major` version bump.
 
 ## limitations
 
