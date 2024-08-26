@@ -139,7 +139,7 @@ I'd love to hear any feedback at this stage about lint groups, CLI config, or an
 
 ## appendix: existing lint groups
 
-### `abi_changed` (#abi-changed)
+### `abi_changed` {#abi-changed}
 
 - `enum_repr_int_changed`
 - `enum_repr_int_removed`
@@ -152,7 +152,7 @@ I'd love to hear any feedback at this stage about lint groups, CLI config, or an
 - `repr_packed_added`
 - `repr_packed_removed`
 
-### `non_constructible` (#non-constructible)
+### `non_constructible` {#non-constructible}
 
 - `constructible_struct_adds_field`
 - `constructible_struct_adds_private_field`
@@ -165,7 +165,7 @@ I'd love to hear any feedback at this stage about lint groups, CLI config, or an
 - `unit_struct_changed_kind`
 - `variant_marked_non_exhaustive`
 
-### `doc_hidden_added` (#doc-hidden-added)
+### `doc_hidden_added` {#doc-hidden-added}
 
 - `enum_now_doc_hidden`
 - `enum_struct_variant_field_now_doc_hidden`
@@ -184,7 +184,7 @@ I'd love to hear any feedback at this stage about lint groups, CLI config, or an
 - `union_now_doc_hidden`
 - `union_pub_field_now_doc_hidden`
 
-### `guarantee_broken` (#guarantee-broken)
+### `guarantee_broken` {#guarantee-broken}
 
 - `enum_marked_non_exhaustive`
 - `enum_variant_added`
@@ -197,14 +197,14 @@ I'd love to hear any feedback at this stage about lint groups, CLI config, or an
 - `type_marked_deprecated`
 
 
-### `impl_removed` (#impl-removed)
+### `impl_removed` {#impl-removed}
 
 - `auto_trait_impl_removed`
 - `derive_trait_impl_removed`
 - `sized_impl_removed`
 
 
-### `item_missing` (#item-missing)
+### `item_missing` {#item-missing}
 
 - `enum_missing`
 - `enum_struct_variant_field_missing`
@@ -228,7 +228,7 @@ I'd love to hear any feedback at this stage about lint groups, CLI config, or an
 - `union_missing`
 - `enum_variant_missing` missin
 
-### `must_use_added` (#must-use-added)
+### `must_use_added` {#must-use-added}
 
 - `enum_must_use_added`
 - `function_must_use_added`
@@ -237,7 +237,7 @@ I'd love to hear any feedback at this stage about lint groups, CLI config, or an
 - `trait_must_use_added`
 - `union_must_use_added`
 
-### `safety_changed` (#safety-changed)
+### `safety_changed` {#safety-changed}
 
 - `function_unsafe_added`
 - `inherent_method_unsafe_added`
