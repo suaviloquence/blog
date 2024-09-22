@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title> Design Draft for `cargo-semver-checks` lint groups and CLI   | max's blog</title>
+		<link rel="stylesheet" href="/base.css" />
+	</head>
+	<body class="light">
+		<div id="content">
+			<header>
+				<a href="/">max's blog</a>
+				 &gt;
+<a class="title" href="https://blog.mcarr.one/lint-groups-cli-draft/">Design Draft for `cargo-semver-checks` lint groups and CLI</a>
+
+			</header>
+			<article>
+				
+<h2 id="subtitle">
+    <span class="date">2024-08-26</span>
+     | tags:
+    <ul id="tags">
+        
+        <li><a href="/tags/gsoc24">gsoc24</a></li>
+        
+        <li><a href="/tags/rust">rust</a></li>
+        
+    </ul>
+    
+</h2>
+
+
+<div id="show-toc">
+    <input id="show-toc-box" type="checkbox" />
+    <label for="show-toc-box">outline</label>
+</div>
+<div id="toc">
+    <ol>
+        
+        <li>
+            <a href="https://blog.mcarr.one/lint-groups-cli-draft/#lint-groups">lint groups</a>
+            
+            <ol>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/lint-groups-cli-draft/#how-many-groups"
+                        >how many groups?</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/lint-groups-cli-draft/#two-modes-of-configuration"
+                        >two modes of configuration</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/lint-groups-cli-draft/#configuration-precedence"
+                        >configuration precedence</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/lint-groups-cli-draft/#dynamic-groups"
+                        >dynamic groups</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/lint-groups-cli-draft/#grouping-the-lints"
+                        >grouping the lints</a
+                    >
+                </li>
+                
+            </ol>
+            
+        </li>
+        
+        <li>
+            <a href="https://blog.mcarr.one/lint-groups-cli-draft/#cli-config">CLI config</a>
+            
+            <ol>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/lint-groups-cli-draft/#prior-art"
+                        >prior art</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/lint-groups-cli-draft/#configuring-version"
+                        >configuring version</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/lint-groups-cli-draft/#precedence"
+                        >precedence</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/lint-groups-cli-draft/#a-less-nuclear-option"
+                        >a less-nuclear option</a
+                    >
+                </li>
+                
+            </ol>
+            
+        </li>
+        
+        <li>
+            <a href="https://blog.mcarr.one/lint-groups-cli-draft/#conclusion">conclusion</a>
+            
+        </li>
+        
+        <li>
+            <a href="https://blog.mcarr.one/lint-groups-cli-draft/#appendix-existing-lint-groups">appendix: existing lint groups</a>
+            
+            <ol>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/lint-groups-cli-draft/#abi-changed"
+                        >abi_changed</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/lint-groups-cli-draft/#non-constructible"
+                        >non_constructible</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/lint-groups-cli-draft/#doc-hidden-added"
+                        >doc_hidden_added</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/lint-groups-cli-draft/#guarantee-broken"
+                        >guarantee_broken</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/lint-groups-cli-draft/#impl-removed"
+                        >impl_removed</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/lint-groups-cli-draft/#item-missing"
+                        >item_missing</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/lint-groups-cli-draft/#must-use-added"
+                        >must_use_added</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/lint-groups-cli-draft/#safety-changed"
+                        >safety_changed</a
+                    >
+                </li>
+                
+            </ol>
+            
+        </li>
+        
+    </ol>
+</div>
+ 
+<h3 class="notice">
+    I'd love to hear any comments, suggestions, or questions you have! You can
+    post them publicly at
+    <a
+        href="https://github.com/suaviloquence/blog/issues/6"
+        target="_blank"
+        >this page's GitHub issue</a
+    >
+    or send me an email at <code>m at mcarr.one</code>
+</h3>
+
+
+<div id="page"><p>After implementing the core <a href="https://blog.mcarr.one/gsoc-update-1/">manifest lint-level configuration</a> for <a href="https://github.com/obi1kenobi/cargo-semver-checks"><code>cargo-semver-checks</code></a>, one of the next steps is adding some of the &quot;nice to have&quot;extra features that will make it much easier to use and configure <code>cargo-semver-checks</code> in projects' workflows.</p>
+<p>Two of these features are <strong>CLI config</strong> and <strong>lint groups</strong>, and, because they are closely related, it can be helpful to think about how they will interact and design them in parallel (even though they might not be implemented at the same time).  Here are some of my considerations for what these features would look like in <code>cargo-semver-checks</code>.</p>
+<h2 id="lint-groups">lint groups</h2>
+<p>A lint group, as the name might suggest, is a group of lints that share a certain property, to be configured all at once.  For context, <code>cargo-semver-checks</code> consists of many precise lints, such as <code>union_must_use_added</code> and <code>module_missing</code>, that each target one specific instance of a semantic versioning guarantee being broken.</p>
+<p>Sometimes, though, it makes more sense to want to express something like &quot;let's make all <code>#[must_use]</code> lints be warnings.&quot;  Currently, this can only be expressed with the following <code>lints</code> table:</p>
+<pre data-lang="toml" style="background-color:#2b303b;color:#c0c5ce;" class="language-toml "><code class="language-toml" data-lang="toml"><span>[package.metadata.cargo-semver-checks.lints]
+</span><span style="color:#bf616a;">enum_must_use_added </span><span>= &quot;</span><span style="color:#a3be8c;">warn</span><span>&quot;
+</span><span style="color:#bf616a;">function_must_use_added </span><span>= &quot;</span><span style="color:#a3be8c;">warn</span><span>&quot;
+</span><span style="color:#bf616a;">inherent_method_must_use_added </span><span>= &quot;</span><span style="color:#a3be8c;">warn</span><span>&quot;
+</span><span style="color:#bf616a;">struct_must_use_added </span><span>= &quot;</span><span style="color:#a3be8c;">warn</span><span>&quot;
+</span><span style="color:#65737e;"># ...
+</span></code></pre>
+<p>The granularity that <code>cargo-semver-checks</code> provides is super helpful, both for writing simple, testable lints and being able to control such precise behaviors, but sometimes, a project just wants to express something like</p>
+<pre data-lang="toml" style="background-color:#2b303b;color:#c0c5ce;" class="language-toml "><code class="language-toml" data-lang="toml"><span style="color:#bf616a;">must_use_added </span><span>= &quot;</span><span style="color:#a3be8c;">warn</span><span>&quot;
+</span></code></pre>
+<p>This, unlike the current state, doesn't require the project to research and know about the internals of <code>cargo-semver-checks</code> and how it divides this semantic group into individual lints, and it is future-proof against additional lints of this category being added.  For example, the <code>union_must_use_added</code> lint was written around <a href="https://github.com/obi1kenobi/cargo-semver-checks/pull/845">two weeks ago</a>.</p>
+<p>Thus, there are scenarios where it would be really helpful to be able to configure groups of similar lints.</p>
+<h3 id="how-many-groups">how many groups?</h3>
+<p>One question that comes up is how many lint groups can a single lint belong to.  It could be one, so every lint group is disjoint from each other, or a lint could belong to zero-to-many lint groups.  The second option could be more expressive, as a lint could be part  of multiple semantic categories.  However, this would add a lot of complexity to the implementation.  Additionally, looking at prior art like <a href="https://rust-lang.github.io/rust-clippy/stable/index.html#?groups=cargo,complexity,correctness,deprecated,nursery,pedantic,perf,restriction,style,suspicious">clippy</a>, there is precedent for having one lint belong to a single lint group.  That way seems like the best path forward for <code>cargo-semver-checks</code>, but this can always be re-evaluated later on if we end up needing the addional expressivity of multiple lint groups per lint.</p>
+<h3 id="two-modes-of-configuration">two modes of configuration</h3>
+<p>As a reminder, each individual lint in <code>cargo-semver-checks</code> can be configured in two ways: the lint level (<code>allow</code>, <code>warn</code>, or <code>deny</code>), or the required semver bump when the lint finds breakage (<code>minor</code> or <code>major</code>).  Like lints, lint groups will be able to configured in these two ways, with the same syntax for specifying these as individual lints. </p>
+<h3 id="configuration-precedence">configuration precedence</h3>
+<p>What happens when a lint group is configured at the same time as a lint belonging to that group? How do they interact? In the cargo <code>[lints]</code> table, which <code>cargo-semver-checks</code> currently emulates, each configuration entry has a member <code>priority</code> (set to 0 if omitted).  Lower numbers (which can be negative) have lower priority, and if a configuration entry for a lint has a higher priority, it will override the lower priority.  Since <code>cargo-semver-checks</code> aims to be compatible with the <code>[cargo]</code> lint table, it makes sense to copy this behavior, although the edge cases (e.g., if a lint group containing a lint and that lint are configured at the same level) can become complex, so this will need testing for these behaviors.  Currently, there is a clippy warning <code>lint_groups_priority</code> for this specific case, so <code>cargo-semver-checks</code> could also produce warnings in configurations like these.  Note that the order of the fields in the <code>[lints]</code> table does not impact the lint sorting and precednece.</p>
+<p>Additionally, as discussed below, priority will also have to be a consideration when specifying configuration through CLI flags.</p>
+<h3 id="dynamic-groups">dynamic groups</h3>
+<p>In <code>rustc</code> linters, there are also dynamic groups, like <code>all</code> and <code>warnings</code> which allow the user to configure all defined lints or all lints currently configured to be warnings (e.g., to <code>deny</code> all warnings as hard errors).  These could be useful for expressiveness to quickly enable all lints/warning checks, but this does not seem like a crucial feature for the initial implementation.  Eventually, we could have dynamic lint groups for all currently-configured <code>major</code> and <code>minor</code>-level lints as well.</p>
+<h3 id="grouping-the-lints">grouping the lints</h3>
+<p>Here is a rough grouping of the currently-present lints in <code>cargo-semver-checks</code>.  This idea skews more specific (as opposed to e.g., clippy's <code>correctness</code>), but this part I would love feedback on.  Lists of lints by group in the appendix, linked for each group.</p>
+<ul>
+<li><a href="https://blog.mcarr.one/lint-groups-cli-draft/#must-use-added"><code>must_use_added</code></a> - all the different instances of adding <code>#[must_use]</code></li>
+<li><a href="https://blog.mcarr.one/lint-groups-cli-draft/#item-missing"><code>item_missing</code></a> - when a public item is removed <sup class="footnote-reference"><a href="#2">1</a></sup></li>
+<li><a href="https://blog.mcarr.one/lint-groups-cli-draft/#abi-changed"><code>abi_changed</code></a> - when the <code>repr</code> or ABI of a public item changes <sup class="footnote-reference"><a href="#3">2</a></sup></li>
+<li><a href="https://blog.mcarr.one/lint-groups-cli-draft/#non-constructible"><code>non_constructible</code></a> - when a struct or enum variant is no longer constructible</li>
+<li><a href="https://blog.mcarr.one/lint-groups-cli-draft/#impl-removed"><code>impl_removed</code></a> - when a struct/enum/union no longer implements a trait <sup class="footnote-reference"><a href="#5">3</a></sup></li>
+<li><a href="https://blog.mcarr.one/lint-groups-cli-draft/#doc-hidden-added"><code>doc_hidden_added</code></a> - when an item becomes <code>#[doc(hidden)]</code> and is removed from the public API</li>
+<li><a href="https://blog.mcarr.one/lint-groups-cli-draft/#safety-changed"><code>safety_changed</code></a> - the safety of a function/item is changed in a way that is breaking</li>
+<li><a href="https://blog.mcarr.one/lint-groups-cli-draft/#guarantee-broken"><code>guarantee_broken</code></a> - a sort of more general category of lint changes that can cause downstream crates to be broken (sometimes subtly) by removing guarantees of a previous API.  This is more general, and could potentially be broken up into smaller groups.</li>
+</ul>
+<p>This would be helpful in situations above.  Clippy's lint groups are more general categories like <code>restriction</code>, <code>correctness</code>, etc., which could also be a direction to go in.  For example, there could be some warn-by-default lints that would fit nicely in a <code>suspicious</code> group.  This is where it could be helpful to have the additional expressiveness of having multiple lint groups for a single lint, but it seems possible to have a creative mix of more targeted/more general categories with only one group per lint, avoiding the additional complexity of many groups per lint.</p>
+<h2 id="cli-config">CLI config</h2>
+<p>Another feature is being able to configure lints and lint groups using command-line flags.  This is a more complicated feature, and we're <a href="https://github.com/obi1kenobi/cargo-semver-checks/issues/827">tracking user demand</a> to see if it's desired to add.  It's helpful, though to reason about the interactions a potential command-line configuration interface would have with lint groups before either feature begins to be implementated.</p>
+<h3 id="prior-art">prior art</h3>
+<p><code>rustc</code>-based linting tools (such as clippy) have CLI syntax like:</p>
+<pre style="background-color:#2b303b;color:#c0c5ce;"><code><span>--allow (-A) |
+</span><span>--warn (-W) |
+</span><span>--deny (-D) |
+</span><span>--forbid (-F) |
+</span><span>--force-warn 
+</span><span>&lt;lint_or_group_name&gt;
+</span></code></pre>
+<p>for example, <code>cargo clippy -- --deny clippy::undocumented-unsafe-blocks --allow unsafe-code</code>.</p>
+<p><code>cargo-semver-checks</code> uses these names for lint levels in the current Cargo.toml manifest configuration (but doesn't currently support <code>forbid</code> or <code>force-warn</code>, and it could help for interoperability in the Rust tooling ecosystem to use similar CLI flags.</p>
+<h3 id="configuring-version">configuring version</h3>
+<p>However, <code>cargo-semver-checks</code> also allows another aspect of each lint to be configured: it's required semantic versioning bump when the lint occurs.  A CLI suite would need to expose this configuration avenue as well.  For example:</p>
+<pre data-lang="sh" style="background-color:#2b303b;color:#c0c5ce;" class="language-sh "><code class="language-sh" data-lang="sh"><span style="color:#bf616a;">$</span><span> cargo semver-checks -- --major must_use_added --minor function_missing
+</span></code></pre>
+<p>It's tempting to add a shorthand for configuring lint level and required semver bump for the same lint/group at once, but this seems to me like a lot of additional complexity for no real gain in expressiveness.</p>
+<p>Just like with manifest configuration, if a lint/group is configured for one aspect, the other aspect remains the default (or previously-configured value)</p>
+<h3 id="precedence">precedence</h3>
+<p>When CLI and manifest both configure a lint or lint group, the CLI should take precedence.  This is also the case with e.g. clippy flags and the <code>[lints.clippy]</code> Cargo.toml table.</p>
+<p>Fortunately, command-line flags are provided in a deterministic sequence, so we don't need a <code>priority</code> key as we did in the manifest table: we just define (like other linters) the later flags taking precedence over the former flags, regardless of whether they are in lint groups or not.  For example:</p>
+<pre data-lang="sh" style="background-color:#2b303b;color:#c0c5ce;" class="language-sh "><code class="language-sh" data-lang="sh"><span style="color:#bf616a;">$</span><span> cargo semver-checks -- --allow must_use_added --deny enum_must_use_added
+</span><span style="color:#bf616a;">$</span><span> cargo semver-checks -- --deny enum_must_use_added --allow must_use_added 
+</span></code></pre>
+<p>The first invocation would require a version bump if <code>#[must_use]</code> was added to a pub enum, because the <code>enum_must_use_added</code> flag took precedence over the lint group.  In the second example, however, it would be the opposite, because the blanket <code>allow</code> came after the targeted <code>deny</code> and thus takes precedence.</p>
+<p>It's important to note that these precedence rules apply to each individual property of the lint (that is, version and lint level), meaning if we had</p>
+<pre data-lang="sh" style="background-color:#2b303b;color:#c0c5ce;" class="language-sh "><code class="language-sh" data-lang="sh"><span style="color:#bf616a;">$</span><span> cargo semver-checks -- --major must_use_added --warn enum_must_use_added
+</span></code></pre>
+<p>the <code>enum_must_use_added</code> lint would be major-level and a warning (and other <code>must_use_added</code> lintsallow would be major-level and an error).</p>
+<h3 id="a-less-nuclear-option">a less-nuclear option</h3>
+<p>The problem that command-line flags solve is being able to configure lints/lint groups in an environment where the Cargo.toml manifest is not available to use for this purpose.  This could be in CI, using precomputed Rustdoc JSON files, etc., where <code>cargo-semver-checks</code> does not have access to the Cargo.toml manifest where lints would be configured.</p>
+<p>One alternative solution that avoids some of this complexity is adding a <code>--lint-config</code> flag that lets the user provide a path to a file that contains the lint configuration table.  With this, we only have to reason about precedence rules and edge cases in one format (the manifest configuration table), but there is a way to configure lints in environments where it's not currently possible.</p>
+<p>Like command-line flags, any items in this table would take precedence over items in the package or workspace <code>Cargo.toml</code>.  One disadvantage of this over command-line flags is that it does require another file to be created, managed, checked into source control, etc., but it does solve the problem that CLI flags also do while using existing infrastructure.</p>
+<h2 id="conclusion">conclusion</h2>
+<p>I'd love to hear any feedback at this stage about lint groups, CLI config, or any of the problems, solutions, and implementation details proposed in this post.  You can find my sketch of the grouped current lints below in the appendix.</p>
+<h2 id="appendix-existing-lint-groups">appendix: existing lint groups</h2>
+<h3 id="abi-changed"><code>abi_changed</code></h3>
+<ul>
+<li><code>enum_repr_int_changed</code></li>
+<li><code>enum_repr_int_removed</code></li>
+<li><code>enum_repr_transparent_removed</code></li>
+<li><code>exported_function_changed_abi</code></li>
+<li><code>function_abi_no_longer_unwind</code></li>
+<li><code>function_changed_abi</code></li>
+<li><code>function_export_name_changed</code></li>
+<li><code>repr_c_removed</code></li>
+<li><code>repr_packed_added</code></li>
+<li><code>repr_packed_removed</code></li>
+</ul>
+<h3 id="non-constructible"><code>non_constructible</code></h3>
+<ul>
+<li><code>constructible_struct_adds_field</code></li>
+<li><code>constructible_struct_adds_private_field</code></li>
+<li><code>constructible_struct_changed_type</code></li>
+<li><code>enum_struct_variant_field_added</code></li>
+<li><code>enum_tuple_variant_field_added</code></li>
+<li><code>struct_marked_non_exhaustive</code></li>
+<li><code>struct_with_pub_fields_changed_type</code></li>
+<li><code>tuple_struct_to_plain_struct</code></li>
+<li><code>unit_struct_changed_kind</code></li>
+<li><code>variant_marked_non_exhaustive</code></li>
+</ul>
+<h3 id="doc-hidden-added"><code>doc_hidden_added</code></h3>
+<ul>
+<li><code>enum_now_doc_hidden</code></li>
+<li><code>enum_struct_variant_field_now_doc_hidden</code></li>
+<li><code>enum_tuple_variant_field_now_doc_hidden</code></li>
+<li><code>function_now_doc_hidden</code></li>
+<li><code>inherent_associated_const_now_doc_hidden</code></li>
+<li><code>inherent_method_now_doc_hidden</code></li>
+<li><code>pub_module_level_const_now_doc_hidden</code></li>
+<li><code>pub_static_now_doc_hidden</code></li>
+<li><code>struct_now_doc_hidden</code></li>
+<li><code>struct_pub_field_now_doc_hidden</code></li>
+<li><code>trait_associated_const_now_doc_hidden</code></li>
+<li><code>trait_associated_type_now_doc_hidden</code></li>
+<li><code>trait_method_now_doc_hidden</code></li>
+<li><code>trait_now_doc_hidden</code></li>
+<li><code>union_now_doc_hidden</code></li>
+<li><code>union_pub_field_now_doc_hidden</code></li>
+</ul>
+<h3 id="guarantee-broken"><code>guarantee_broken</code></h3>
+<ul>
+<li><code>enum_marked_non_exhaustive</code></li>
+<li><code>enum_variant_added</code></li>
+<li><code>function_const_removed</code></li>
+<li><code>function_parameter_count_changed</code></li>
+<li><code>method_parameter_count_changed</code></li>
+<li><code>pub_static_mut_now_immutable</code></li>
+<li><code>trait_newly_sealed</code></li>
+<li><code>trait_no_longer_object_safe</code></li>
+<li><code>type_marked_deprecated</code></li>
+</ul>
+<h3 id="impl-removed"><code>impl_removed</code></h3>
+<ul>
+<li><code>auto_trait_impl_removed</code></li>
+<li><code>derive_trait_impl_removed</code></li>
+<li><code>sized_impl_removed</code></li>
+</ul>
+<h3 id="item-missing"><code>item_missing</code></h3>
+<ul>
+<li><code>enum_missing</code></li>
+<li><code>enum_struct_variant_field_missing</code></li>
+<li><code>enum_tuple_variant_field_missing</code></li>
+<li><code>function_missing</code></li>
+<li><code>inherent_associated_pub_const_missing</code></li>
+<li><code>inherent_method_const_removed</code></li>
+<li><code>inherent_method_missing</code></li>
+<li><code>module_missing</code></li>
+<li><code>pub_module_level_const_missing</code></li>
+<li><code>pub_static_missing</code></li>
+<li><code>struct_missing</code></li>
+<li><code>struct_pub_field_missing</code></li>
+<li><code>struct_repr_transparent_removed</code></li>
+<li><code>trait_method_missing</code></li>
+<li><code>trait_missing</code></li>
+<li><code>trait_removed_associated_constant</code></li>
+<li><code>trait_removed_associated_type</code></li>
+<li><code>trait_removed_supertrait</code></li>
+<li><code>union_field_missing</code></li>
+<li><code>union_missing</code></li>
+<li><code>enum_variant_missing</code> missin</li>
+</ul>
+<h3 id="must-use-added"><code>must_use_added</code></h3>
+<ul>
+<li><code>enum_must_use_added</code></li>
+<li><code>function_must_use_added</code></li>
+<li><code>inherent_method_must_use_added</code></li>
+<li><code>struct_must_use_added</code></li>
+<li><code>trait_must_use_added</code></li>
+<li><code>union_must_use_added</code></li>
+</ul>
+<h3 id="safety-changed"><code>safety_changed</code></h3>
+<ul>
+<li><code>function_unsafe_added</code></li>
+<li><code>inherent_method_unsafe_added</code></li>
+<li><code>trait_method_unsafe_added</code></li>
+<li><code>trait_method_unsafe_removed</code></li>
+<li><code>trait_unsafe_added</code></li>
+<li><code>trait_unsafe_removed</code></li>
+</ul>
+</div>
+
+			</article>
+			<footer>
+				<p>
+				<span id="heart">&lt;3</span> - <a href="https://github.com/suaviloquence/blog" target="_blank">source</a>
+				</p>
+			</footer>
+		</div>
+	</body>
+</html>
+

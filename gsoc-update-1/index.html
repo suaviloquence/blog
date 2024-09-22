@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title> GSoC Update #1   | max's blog</title>
+		<link rel="stylesheet" href="/base.css" />
+	</head>
+	<body class="light">
+		<div id="content">
+			<header>
+				<a href="/">max's blog</a>
+				 &gt;
+<a class="title" href="https://blog.mcarr.one/gsoc-update-1/">GSoC Update #1</a>
+
+			</header>
+			<article>
+				
+<h2 id="subtitle">
+    <span class="date">2024-07-08</span>
+     | tags:
+    <ul id="tags">
+        
+        <li><a href="/tags/gsoc24">gsoc24</a></li>
+        
+        <li><a href="/tags/rust">rust</a></li>
+        
+    </ul>
+    
+</h2>
+
+
+<div id="show-toc">
+    <input id="show-toc-box" type="checkbox" />
+    <label for="show-toc-box">outline</label>
+</div>
+<div id="toc">
+    <ol>
+        
+        <li>
+            <a href="https://blog.mcarr.one/gsoc-update-1/#manifest-configuration">manifest configuration</a>
+            
+            <ol>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/gsoc-update-1/#workspace-configuration"
+                        >workspace configuration</a
+                    >
+                </li>
+                
+            </ol>
+            
+        </li>
+        
+        <li>
+            <a href="https://blog.mcarr.one/gsoc-update-1/#what-s-next">what&#x27;s next?</a>
+            
+        </li>
+        
+        <li>
+            <a href="https://blog.mcarr.one/gsoc-update-1/#reflections">reflections</a>
+            
+        </li>
+        
+    </ol>
+</div>
+ 
+<h3 class="notice">
+    I'd love to hear any comments, suggestions, or questions you have! You can
+    post them publicly at
+    <a
+        href="https://github.com/suaviloquence/blog/issues/5"
+        target="_blank"
+        >this page's GitHub issue</a
+    >
+    or send me an email at <code>m at mcarr.one</code>
+</h3>
+
+
+<div id="page"><p>Hey everyone! It's been a little while... Here's some updates and reflections on my first few weeks <sup class="footnote-reference"><a href="#1">1</a></sup> working on <a href="https://github.com/obi1kenobi/cargo-semver-checks"><code>cargo-semver-checks</code></a>
+for Google Summer of Code 2024.  <em>(You can read my previous blog posts in the <a href="/tags/gsoc24/"><code>gsoc24</code> tag</a> for an intro to what I'm doing.)</em></p>
+<h2 id="manifest-configuration">manifest configuration</h2>
+<p>A big feature of my project was to add lint-level configuration in the <code>[package.metadata]</code> table of the <code>Cargo.toml</code> manifest when running <code>cargo-semver-checks</code>, and this feature
+has been merged into the main repo.  Here's an example of what you can do now:</p>
+<p><em>refresher: <code>cargo-semver-checks</code> runs checks (lints) between versions of a library crate to make sure a new release is following <a href="https://doc.rust-lang.org/cargo/reference/semver.html">semantic versioning guarantees</a>.
+For example, the <code>function_missing</code> lint checks whether a <code>pub</code> function has been removed (or renamed) in the current version, which, by default, requires a new <em>major</em> version release.</em></p>
+<p>Cargo.toml:</p>
+<pre data-lang="toml" style="background-color:#2b303b;color:#c0c5ce;" class="language-toml "><code class="language-toml" data-lang="toml"><span>[package.metadata.cargo-semver-checks.lints]
+</span><span style="color:#bf616a;">function_missing </span><span>= &quot;</span><span style="color:#a3be8c;">warn</span><span>&quot;
+</span><span style="color:#bf616a;">module_missing </span><span>= &quot;</span><span style="color:#a3be8c;">minor</span><span>&quot;
+</span><span style="color:#bf616a;">enum_missing </span><span>= { </span><span style="color:#bf616a;">lint-level </span><span>= &quot;</span><span style="color:#a3be8c;">deny</span><span>&quot;, </span><span style="color:#bf616a;">required-update </span><span>= &quot;</span><span style="color:#a3be8c;">minor</span><span>&quot; }
+</span><span style="color:#bf616a;">trait_missing </span><span>= &quot;</span><span style="color:#a3be8c;">allow</span><span>&quot;
+</span></code></pre>
+<p>With this configuration, users can now configure the <em>required semver update</em> (<code>major</code> or <code>minor</code>) and <em>level of severity</em> (<code>deny</code>, <code>warn</code>, <code>allow</code>) for any given check.</p>
+<p>Why might this be useful? Say a library has different policies than the semver guidelines for one check, for example changing the <a href="https://github.com/obi1kenobi/cargo-semver-checks/blob/main/src/lints/function_changed_abi.ron">ABI of a function</a>.  If the library only considers this a minor-level change, versus <code>cargo</code> guidelines' major, they couldn't integrate <code>cargo-semver-checks</code> (e.g., into CI) without much difficulty because this check would not have the right behavior for this specific library's needs.  In doing so, they miss out on checking the other <a href="https://github.com/obi1kenobi/cargo-semver-checks/tree/main/src/lints">70+ checks</a> just because of this one discrepancy, which could easily lead to other semantic versioning violations because, as <code>cargo-semver-checks</code> shows, computers are very good at checking these sorts of things automatically.</p>
+<p>Now, the library could simply add <code>function_changed_abi = &quot;minor&quot;</code> to their Cargo.toml in the <code>[package.metadata.cargo-semver-checks.lints]</code> table and be able to configure, run, and integrate <code>cargo-semver-checks</code> into their versioning workflows.  This helps prevent semantic versioning violations, which lets dependent crates and the whole Rust ecosystem more confidently use libraries and upgrade safely to get bug fixes and enhancements without breaking their existing code using the guarantees of semver.</p>
+<p>Additionally, by adding warnings and lint levels, <code>cargo-semver-checks</code> can now run checks on code that don't necessarily <em>require</em> a new version bump.  With this, we can create new <code>warn</code>-by-default lints that check suspicious code: changes that are not necessarily semantic versioning violations, but suggest that there could be a (more complicated) error that <code>cargo-semver-checks</code> can't check with 100% certainty yet.</p>
+<h3 id="workspace-configuration">workspace configuration</h3>
+<p>Additionally, I added the ability to configure the lints at the package and the workspace level.  By adding the similar <code>[workspace.metadata.cargo-semver-checks.lints]</code> table, libraries can configure defaults for <code>cargo-semver-checks</code> for all packages in a Cargo workspace, and then override in <code>[package.metadata]</code> for individual crates if need be.</p>
+<h2 id="what-s-next">what's next?</h2>
+<p>Here are the things I'm going to be working on after this:</p>
+<ul>
+<li><strong>testing testing testing</strong>: there are lots of edge cases and tricky situations that came up while adding these features, and I want to make sure that <code>cargo-semver-checks</code> has the expected behavior in these cases, so I will add even more unit/integration tests to our test suite.</li>
+<li><strong>documentation/migration guide</strong>: with a big new feature like this, we need lots of documentation for both users of <code>cargo-semver-checks</code> as a Rust library and as a binary tool, so I'm going to write even more on how people can use the new configuration in their own projects and code.</li>
+<li><strong>clean up CLI output</strong>: in adding warnings, there were definitely areas for incremental improvement in how <code>cargo-semver-checks</code> displays this information to the user, so I'm going to work on improving it and making it more consistent.</li>
+<li><strong>other features</strong>:
+<ul>
+<li><em>CLI flags</em>: the ability to pass <code>--warn function_missing</code>, <code>--minor module_missing</code>, and like configuration to the <code>cargo-semver-checks</code> binary instead of/in addition to configuration in the <code>Cargo.toml</code> manifest</li>
+<li><em>lint groups</em>: the ability to configure multiple related lints at once (like in tools like <code>clippy</code>), for example a <code>suspicious</code> group of warn-by-default lints.</li>
+<li>more features? What do you think is important for this tool to have? I'd love to hear what you think, in this blog's GitHub issue or on the project's <a href="https://rust-lang.zulipchat.com/#narrow/stream/421156-gsoc/topic/Project.3A.20Adding.20lint.20configuration.20to.20cargo-semver-checks">Zulip stream</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="reflections">reflections</h2>
+<p>I can't give enough thanks to my GSoC mentor Predrag Gruevski, who has given endless helpful and insightful feedback on all of my changes, thinking of areas and use-cases that are so important to consider.  Additionally, I've been working on my git hygiene, breaking up pull requests into as small as possible to be easier to review and make sure they are correct (sorry again for the first massive one, hehe).  Additionally, it's been so fun seeing the progress so far on the other GSoC projects and the support of the Rust community as a whole.  Happy coding!</p>
+<div class="footnote-definition" id="1"><sup class="footnote-definition-label">1</sup>
+<p>Although the coding period of GSoC has been on for more than a few weeks, my school ends later than typical, so we basically pushed back the start and end dates for me.</p>
+</div>
+</div>
+
+			</article>
+			<footer>
+				<p>
+				<span id="heart">&lt;3</span> - <a href="https://github.com/suaviloquence/blog" target="_blank">source</a>
+				</p>
+			</footer>
+		</div>
+	</body>
+</html>
+

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title> Google Summer of Code Final Writeup   | max's blog</title>
+		<link rel="stylesheet" href="/base.css" />
+	</head>
+	<body class="light">
+		<div id="content">
+			<header>
+				<a href="/">max's blog</a>
+				 &gt;
+<a class="title" href="https://blog.mcarr.one/gsoc-final/">Google Summer of Code Final Writeup</a>
+
+			</header>
+			<article>
+				
+<h2 id="subtitle">
+    <span class="date">2024-09-23</span>
+     | tags:
+    <ul id="tags">
+        
+        <li><a href="/tags/gsoc24">gsoc24</a></li>
+        
+        <li><a href="/tags/rust">rust</a></li>
+        
+    </ul>
+    
+</h2>
+
+
+<div id="show-toc">
+    <input id="show-toc-box" type="checkbox" />
+    <label for="show-toc-box">outline</label>
+</div>
+<div id="toc">
+    <ol>
+        
+        <li>
+            <a href="https://blog.mcarr.one/gsoc-final/#the-work">the work</a>
+            
+            <ol>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/gsoc-final/#overrides"
+                        >overrides</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/gsoc-final/#the-lints-table"
+                        >the [lints] table</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/gsoc-final/#compatibility-with-cargo"
+                        >compatibility with cargo</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/gsoc-final/#documenting"
+                        >documenting</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/gsoc-final/#a-detour"
+                        >a detour?</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/gsoc-final/#new-features"
+                        >new features!</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/gsoc-final/#lint-groups"
+                        >lint groups</a
+                    >
+                </li>
+                
+            </ol>
+            
+        </li>
+        
+        <li>
+            <a href="https://blog.mcarr.one/gsoc-final/#thanks">thanks</a>
+            
+            <ol>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/gsoc-final/#and-an-apology"
+                        >and an apology</a
+                    >
+                </li>
+                
+            </ol>
+            
+        </li>
+        
+        <li>
+            <a href="https://blog.mcarr.one/gsoc-final/#what-s-next">what&#x27;s next</a>
+            
+        </li>
+        
+    </ol>
+</div>
+ 
+
+<div id="page"><p>Summer is officially over now, and now so is my <a href="https://blog.mcarr.one/gsoc-24-intro/">Google Summer of Code project</a> for this year.  This was a really great experience for me, and I'm super grateful to have had this opportunity.  I had the great help of being mentored by the maintainer of the project <a href="https://predr.ag/">Predrag Gruevski</a>, which I couldn't have asked for a better mentor for this.  In this blog post, I'll talk about the work I did, reflections on my experience, and what the future looks like:</p>
+<h2 id="the-work">the work</h2>
+<p>The title of my GSoC project that I wrote at the beginning is &quot;adding lint-level configuration to <code>cargo-semver-checks</code>.&quot;  This means adding the ability for users to configure each individual check of the semantic versioning linter <a href="https://github.com/obi1kenobi/cargo-semver-checks/"><code>cargo-semver-checks</code></a>. <sup class="footnote-reference"><a href="#project-info">1</a></sup> Adding this configuration granularity will let many more Rust crates adopt <code>cargo-semver-checks</code> to automatically help prevent breaking the semantic versioning guarantees, which helps the whole Rust ecosystem make more fearless upgrades according to SemVer.</p>
+<h3 id="overrides">overrides</h3>
+<p>To configure each of <code>cargo-semver-checks</code>'s 90+ lints, both by lint level/severity and required SemVer update, I first added a <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/a8083aabf4ae46167b435c7f4aba3425fbf463c5">default lint level field (#787)</a> to each lint, then added a <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/393691c79dc9a70cdc557fd4b3b24e988b0ec307">new API (#788)</a> to configure overriding each lint's fields.  I had to design a system that supported multiple levels of precedence, with the ability to configure lint level, required update, or both for a given lint at each of these precedence levels, so it took some careful design and adding plenty of unit tests.</p>
+<h3 id="the-lints-table">the <code>[lints]</code> table</h3>
+<p>After posting my initial blog post, the feedback I received from community members was very helpful.  Initially, I had planned to start exposing the configuration interface as a series of CLI flags (like <code>rustc</code>'s <code>--warn &lt;name&gt;</code>).  In this discussion with my mentor and community members like <a href="https://github.com/epage">epage</a>, it started to look like a better idea to work on the <code>[lints]</code> table in the Cargo manifest first, and reevaluate the need for CLI flags later on.</p>
+<p>After this, I implemented the logic to read a table similar to the Cargo <code>[lints]</code> table from manifests in <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/f8f89ecfa7f1e60b343e7b07beaf415393f244f8">#799</a>, using the <code>[package.metadata.cargo-semver-checks.lints]</code> (it's currently not valid for tools like <code>cargo-semver-checks</code> to use the <code>[lints]</code> table directly), and in <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/4e0b92629a96413f875035d6d537a8409a90baf1">#800</a>, I implemented the logic to use the configured required update, and added tests for the many different interactions, especially with both workspace and package configuration.</p>
+<p>After some minor fixes in <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/ee0ce6df438aee7be50fe67041481a20c4257d3b">#804</a>, and <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/4586521f8976947ea45a7e40c2218cbf7c051c9a">#806</a>, I finished the logic for using the configured lint level in <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/fe1830f2e550bf2d82ccf1b6705571da12a74fbc">#805</a>.  THis was much more design-intensive than using the configured required update, because this was also introducing the concept of warning-level checks to <code>cargo-semver-checks</code>, and I spent a lot of time with my mentor designing how a warning should look like in <code>cargo-semver-checks</code>'s interface, and how warnings should interact with errors.</p>
+<p>In <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/137790a595ea8ae0166e5a0b39ac1f60ee23b044">#808</a> and <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/a72aa1388af5e3766bc93bd03de43260ed8f048e">#809</a> I added some future-proofing tests and comments to help with maintainability.</p>
+<h3 id="compatibility-with-cargo">compatibility with <code>cargo</code></h3>
+<p>A goal of <code>cargo-semver-checks</code> as a project is to be as compatible with <code>cargo</code> as possible and eventually be merged with the tool.  After posting another update on <code>cargo-semver-checks</code>'s new configurability, part of the feedback to this was that the current lints table would not be quite compatible with cargo's.  In <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/43678899bcc9f748101e9226fb4995a54555d463">#811</a>, <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/a4f745f94dbf23ed9cf13bfe72b9cad875de4d3c">#812</a>, and <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/363754a3811d3fdf0ce5ac115723ea2ecf74558e">#813</a>, I added the functionality to mimic <code>cargo</code> and only read workspace configuration if a key is explicitly set in the package, and added tests (including making sure that <code>cargo-semver-checks</code> denies the <code>lints.workspace = false</code> key, which is insidiously ian invalid state).</p>
+<h3 id="documenting">documenting</h3>
+<p>At this point, the initial core configuration was ready, so I added a section to the README that was a guide on how to use this new feature in <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/319943604b02fa814def31163a418326ea7cb460">#826</a> and <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/c11ec6d02b4cea17209be9239ff8c1bb6ff025ad">#829</a>.  I wrote a lot of documentation this summer, both developer-facing and user-facing, and it's one of the things I'm proud of.  To me, documentation is often the first impression of a project, and it can make or break a user's experience, so polishing it is super important.</p>
+<h3 id="a-detour">a detour?</h3>
+<p>Here in the project, there was kind of a lull, and I was working on polishing tests and documentation.  However, one thing I was noticing was that it was kind of hard and involved to write a full integration test case.  My mentor suggested that I try to improve the testing infrastructure for <code>cargo-semver-checks</code>, and I thought that was a great idea.  In <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/329c42f1cfadba23454d881273f63df40a6291bc">#846</a>, I added the foundation to be able to write integration tests using the <code>insta</code> framework.  I also spent some time benchmarking to figure out what kind of test (i.e., <code>lib test</code>, <code>bin test</code>, or, confusingly, <code>test</code> binary) would be most helpful to access the right parts of <code>cargo-semver-checks</code> to test while having the fastest possible compile times for better iteration and design.  Here, I also wrote a lot of documentation for future contributors to have the best experience when writing new tests.</p>
+<p>After adding this test infrastructure, I wrote some tests that pinned down <code>cargo-semver-checks</code>'s behavior for different edge cases, which documented this behavior, prevented any unwanted regressions, and would be easy to change if we decided in the future we wanted this behavior to be different, in <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/0ed482776ba158df55ff3651aaa95019249e04b4">#847</a>, <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/62a3c75215399f9c5d853b7dad24147af6a01f42">#859</a>, <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/c53ff88cd6d6d4e0631c4405d5f8c0da562d8218">#866</a>, and <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/6e5d78acf899dbb232060cfc525b7444a3d2f7e5">#882</a>.  In writing these tests, I found the opportunity to polish in fix parts of the test infrastructure, like in <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/eb5c87dac9ce2c51d054272d6ba902cc4121bc3f">#865</a>, <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/8898271377a3931925ba38518b1995c96107795f">#867</a>, <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/5b35f9f3d66ea76a6dd87fa348fabd12224a30c3">#881</a>, and <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/c2dfe22505975f3092820e4464ccb2774e87928c">#883</a>, as well as <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/7b7a518150b7ff2701c40a61829896a2cd05898b">#913</a> later on.</p>
+<h3 id="new-features">new features!</h3>
+<p>At this point, the <a href="https://github.com/obi1kenobi/cargo-semver-checks/issues/827">user demand</a> for CLI-configurable lints when there was already another avenue to configure them was not that strong, so it didn't seem like the best way forward to continue with my original proposed idea of adding CLI flags here.  The project started to go off the rails a little, but in a very good way.  Predrag suggested that I work on a new feature to generate witness programs, which are buildable examples of the downstream breakage of agiven breaking change, which prove that a SemVer guarantee would be broken with this change.  As a fan of testing and correctness, I got to work on this feature. </p>
+<p>Adding witnesses is a big feature, so we wanted the ability to mark a feature as unstable during its development.  Following the design of other tools in the Rust ecosystem like Cargo, I worked on the ability to have unstable feature flags and CLI options in <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/eb0c7713c61a3bc9de5a872e3327eaa2e59c462e">#896</a>, and I added some various consistency improvements in <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/a39dc2b46bb52aadfb02d067ea3904719ec89fe8">#897</a>, <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/cf060a624fbac0ffc6332319d9b7c560330a8e83">#899</a>, and <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/3352f525554a825745465ba02f41af2200c37a73">#919</a>.</p>
+<p>I added the start of the witness feature in <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/a056a5a743370612109ea32a797859a2fea8a210">#893</a>, and improved the contributor experience and documentation for adding new witnesses in <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/1bd25e6348a528871702af724edfbfc93e08130">#935</a> and <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/0f67fc4d92c310cc9ff3ab617ac36d058fb8aadc">#933</a>.</p>
+<p>Work on witnesses is currently unfinished ongoing, and this is one of the things I will keep working on as GSoC finishes.</p>
+<h3 id="lint-groups">lint groups</h3>
+<p>One of the stretch goals in my original project was adding configurable lint groups in addition to configuring individual lints, and this feature was seeming more useful than adding CLI configuration flags.  I worked on a <a href="https://blog.mcarr.one/lint-groups-cli-draft/">design draft</a>, focusing on how a user would use these features.  I started the work by reading the <code>priority</code> field to the <code>[lints]</code> table in <a href="https://github.com/obi1kenobi/cargo-semver-checks/commit/68ee754452a74bc987bc98fdf29443efffd08edf">#932</a> to avoid configuration conflicts by defining precedence, and I have drafts of the logic to have lint group configuration, so expect to see lint groups in <code>cargo-semver-checks</code> pretty soon.</p>
+<hr />
+<p>...and that's it.  I merged 40 commits during GSoC which feels like a lot, but also not a lot, because each of those commits is squashed and many of them have several parts/squashed commits and (quite in-depth) discussions in the pull request, so the commit history does not tell the full story.</p>
+<h2 id="thanks">thanks</h2>
+<p>About those discussions: I could not get this far in the blog post without recognizing my mentor, Predrag Gruevski. His attention to detail (down to the number of spaces after a period), thoughtfulness, kindness, and careful consideration of every line of code I merged into <code>cargo-semver-checks</code> (and the so many that I didn't) encouraged me to design, implement, and think about the code I submitted from different perspectives and as part of a complex system.  This was so helpful in shaping the way I think about designing features and contributing to open source, and I can't thank him enough.</p>
+<p>Additionally, the community around the Rust GSoC program and the Rust project in general was a super great environment to be a part of.  Special thanks to the GSoC admin Jakub Beránek, maintainers and contributors like Ed Page and Scott Schafer, everyone else working on a Rust GSoC project this summer - it was such a great experience to see updates and how everyone's project progressed over the summer, and the whole open source community.  I can't overstate what a welcoming experience this has been, and I'm definitely going to keep being a part of the community in the future.</p>
+<h3 id="and-an-apology">and an apology</h3>
+<p><a href="https://github.com/obi1kenobi/cargo-semver-checks/pull/784">The first PR</a> I opened as a part of my GSoC project was... a little overzealous.  It changed hundreds of lines of code, affected multiple different systems, added multiple different features, and was overall a huge set of changes to review.  My mentor (very nicely and diplomatically) suggested I might break up the changes into smaller PRs.  This was a great learning experience for me to reflect on my git hygiene and how to make my changes easier and clearer to review, which is something I worked on and developed over the summer.  I'm grateful to have had this opportunity to grow, and I do apologize for this first pull request ;).</p>
+<h2 id="what-s-next">what's next</h2>
+<p>This is certainly not the end of my work on <code>cargo-semver-checks</code>.  Right now, I have three projects I'm working on: adding the functionality for lint groups, keeping working on adding witnesses, and working on a <a href="https://github.com/obi1kenobi/cargo-semver-checks/pull/939">refactor of the command line output</a> of <code>cargo-semver-checks</code>.  With the new features, <code>cargo-semver-checks</code> outgrew its old interface a little bit, and we're working on exploring making it more consistent with the output of <code>rustc</code> and <code>clippy</code>.</p>
+<p>Additionally, I'm going to keep working on <a href="https://github.com/suaviloquence/scrapelect/">some of my own projects</a>, and I'm also planning on contributing to some other Rust open-source projects now that GSoC is over.  I'd like to keep posting about my journey on this blog, and I made a <a href="https://fosstodon.org/@m_carr">Mastodon</a> for interacting with the open-source community.  (and I'm always looking for cool people to follow!)</p>
+<p>Thanks again to everyone who made this summer possible!</p>
+<div class="footnote-definition" id="project-info"><sup class="footnote-definition-label">1</sup>
+<p>For more information about the project, I wrote a <a href="https://blog.mcarr.one/gsoc-24-intro/">blog post</a> describing the problem I set out to solve this summer.</p>
+</div>
+</div>
+
+			</article>
+			<footer>
+				<p>
+				<span id="heart">&lt;3</span> - <a href="https://github.com/suaviloquence/blog" target="_blank">source</a>
+				</p>
+			</footer>
+		</div>
+	</body>
+</html>
+

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title> GSoC &#x27;24 Intro   | max's blog</title>
+		<link rel="stylesheet" href="/base.css" />
+	</head>
+	<body class="light">
+		<div id="content">
+			<header>
+				<a href="/">max's blog</a>
+				 &gt;
+<a class="title" href="https://blog.mcarr.one/gsoc-24-intro/">GSoC &#x27;24 Intro</a>
+
+			</header>
+			<article>
+				
+<h2 id="subtitle">
+    <span class="date">2024-05-07</span>
+     | tags:
+    <ul id="tags">
+        
+        <li><a href="/tags/gsoc24">gsoc24</a></li>
+        
+        <li><a href="/tags/rust">rust</a></li>
+        
+    </ul>
+    
+</h2>
+
+
+<div id="show-toc">
+    <input id="show-toc-box" type="checkbox" />
+    <label for="show-toc-box">outline</label>
+</div>
+<div id="toc">
+    <ol>
+        
+        <li>
+            <a href="https://blog.mcarr.one/gsoc-24-intro/#semantic-versioning-and-cargo-semver-checks-what-am-i-working-on">semantic versioning and cargo-semver-checks: what am i working on?</a>
+            
+            <ol>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/gsoc-24-intro/#enter-cargo-semver-checks"
+                        >enter cargo-semver-checks</a
+                    >
+                </li>
+                
+            </ol>
+            
+        </li>
+        
+        <li>
+            <a href="https://blog.mcarr.one/gsoc-24-intro/#planned-work">planned work: how am i enhancing cargo-semver-checks this summer?</a>
+            
+            <ol>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/gsoc-24-intro/#lint-level-configuration"
+                        >lint-level configuration</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/gsoc-24-intro/#more-possibilities"
+                        >more possibilities</a
+                    >
+                </li>
+                
+            </ol>
+            
+        </li>
+        
+        <li>
+            <a href="https://blog.mcarr.one/gsoc-24-intro/#footnotes">footnotes</a>
+            
+        </li>
+        
+    </ol>
+</div>
+ 
+<h3 class="notice">
+    I'd love to hear any comments, suggestions, or questions you have! You can
+    post them publicly at
+    <a
+        href="https://github.com/suaviloquence/blog/issues/1"
+        target="_blank"
+        >this page's GitHub issue</a
+    >
+    or send me an email at <code>m at mcarr.one</code>
+</h3>
+
+
+<div id="page"><p>I'm super excited to be working on <a href="https://github.com/obi1kenobi/cargo-semver-checks"><code>cargo-semver-checks</code></a> this summer! I'll be posting updates here under the <a href="/tags/gsoc24"><code>gsoc24</code> tag</a> as I work on it this summer. I love the philosophy of the tool and I think it's a great example of the ideas of the Rust language and ecosystem that let people make correct code more easily.</p>
+<h1 id="semantic-versioning-and-cargo-semver-checks-what-am-i-working-on">semantic versioning and <code>cargo-semver-checks</code>: what am i working on?</h1>
+<p><em>this is a little introduction to the problem that <code>cargo-semver-checks</code> tries to solve, and how it solves it. if you're already familiar with the project, feel free to jump to the <a href="https://blog.mcarr.one/gsoc-24-intro/#planned-work">planned work</a> section.</em></p>
+<p>I can tell my friends and family that I'm &quot;adding lint-level configuration to <code>cargo-semver-checks</code>,&quot; but judging by the blank stares I get, that doesn't make it any clearer what I'm actually working on. However, we all, even non-programmers, have some experience with the problems that semantic versioning and <code>cargo-semver-checks</code> try to solve:</p>
+<p>Have you ever updated an app on your phone only to open it and find out that they, for whatever reason, removed a feature you used to use? It probably broke your workflow, and there probably was little to no warning whenn you went to update the app that this would happen. This is essentially the problem that semantic versioning works to solve.</p>
+<p>With a piece of software that uses semantic versioning (shortened form: semver), its software version takes the form <code>x.y.z</code>, where <code>x</code> is the <em>major</em> version number, <code>y</code> is the <em>minor</em> version number, and <code>z</code> is the <em>patch</em> number. Take an application <code>cat-petter</code> with version <code>1.5.2</code>. If the developers just fixed bugs or added minor improvements, they can just bump the <em>patch</em> version and release <code>1.5.3</code>, and users of this app will know that they can upgrade from 1.5.2 to 1.5.3 without any breaking changes. However, let's say the developers add a feature to pet <em>all</em> pets in a way that <em>doesn't break</em> the original workflow of petting cats (here's a <a href="https://doc.rust-lang.org/cargo/reference/semver.html#fn-generalize-compatible">rust analog: generalizing a function</a>), they should bump the <em>minor</em> version to show that this feature was added to version <code>1.6.0</code>.</p>
+<p>It's important to note that this only applies if it doesn't make the original use-case in 1.5.2 stop working. Say for example, that the developers wanted (for some reason) to make <code>cat-sitter</code> pet dogs instead of cats. This new version of the app would break for someone using 1.5.2, so they should release version <code>2.0.0</code>, bumping the major version number, to show this.</p>
+<p>Thus, you, the user of the app, can see the version change when you go to update the app. If it's just a patch bump, the contract of semantic versioning assures you that you can update it without breaking your workflow. If it's a minor version bump, you will know that some new features were added, but it <em>generally</em> will still work the way you used to use it.<sup class="footnote-reference"><a href="#1">1</a></sup> If it's a major version bump, though, you know that there is the possibility to break your workflow, so you should be careful and research your decision to upgrade.</p>
+<h2 id="enter-cargo-semver-checks">enter <code>cargo-semver-checks</code></h2>
+<p>There's one problem, though: as a developer, keeping track of all these changes is <em>hard</em>. For Rust library crate developers, there's a <a href="https://doc.rust-lang.org/cargo/reference/semver.html">cargo guide</a> on minor and major-breaking changes, but it's long, and it's non-exhaustive. It's a lot to keep track of.</p>
+<p>Do you know what is good at remembering and keeping track of things given well-defined rules? Computers are. Just like the philosophy of the Rust language is to eliminate entire classes of programming errors by checking your programs at compile time, we can also check for semantic versioning violations when we are ready to release a new version of our library.</p>
+<p><a href="https://github.com/obi1kenobi/cargo-semver-checks"><code>cargo-semver-checks</code></a> is a tool that checks library crates for whether they have upheld the semantic versioning guarantees, or whether they need to make a minor or major version bump based on how the library code has changed between versions. It does this by applying lints, one check for each different way that major or minor changes can occur, over the library's API surface, using <a href="https://github.com/obi1kenobi/trustfall">Trustfall</a> and <a href="https://doc.rust-lang.org/rustdoc/index.html"><code>rustdoc</code></a>.
+It's a great tool that greatly improves the developer experience, and, by reducing semver violations, builds more trust in the semver guarantees across the whole Rust ecosystem. A library crate can add it to their continues integration tests, and efficiently track whether they have accidentally broken semver before they push the changes.</p>
+<h1 id="planned-work">planned work: how am i enhancing <code>cargo-semver-checks</code> this summer?</h1>
+<p>However, there are lots of reasons, especially for large, mature library crates, why a project can't adhere completely to the way <code>cargo-semver-checks</code> interprets the semantic versioning guidelines. For example, one project may not consider it a minor-level change just to <a href="https://doc.rust-lang.org/cargo/reference/semver.html#item-new">add a public item</a>. Currently, this would prevent them from adding <code>cargo-semver-checks</code> to their CI pipeline without a lot of potentially-hacky workarounds. We don't want this! All libraries should be able to use this tool without having to agree completely with its default interpretation of the semver spec.</p>
+<h2 id="lint-level-configuration">lint-level configuration</h2>
+<p>We want to be able to configure two things about each individual lint in <code>cargo-semver-checks</code>: whether to <code>allow</code>, <code>warn</code>, or <code>deny</code> (i.e., raise an error) when we detect it, and what semver level (<code>major</code> or <code>minor</code>) is it a breaking change for.</p>
+<p>Here's a general outline of what I'm planning on adding to the tool:</p>
+<h3 id="cli-configuration">CLI configuration</h3>
+<p>Like <code>clippy</code> and other linting tools, we want to be able to specify the error and semver levels while running the tool: for example <code>cargo semver-checks [...] -Afunction_export_name_hidden -Dtrait_method_now_hidden=minor -Wrepr_c_removed=minor</code> would make the <code>function_export_name_hidden</code> allowed/not error at all, and the <code>trait_method_now_hidden</code> lint now only a minor-version bump, and make the <code>repr_c_removed</code> both a warning and only a minor-breaking change, and all the different permutations of this.</p>
+<h3 id="cargo-toml-config">Cargo.toml config</h3>
+<p>There is a <a href="https://doc.rust-lang.org/cargo/reference/manifest.html#the-lints-section"><code>[lints]</code></a> table in Cargo.toml, but it's not yet available to configure third-party tools like <code>cargo-semver-checks</code> with. As of now, we can make a <code>[package.metadata]</code> section using the same syntax as the lints table, and then move over to that when it's stabilized for third-party tools. When this is added, a user will be able to configure <code>cargo-semver-checks</code> in their Cargo.toml like this:</p>
+<pre data-lang="toml" style="background-color:#2b303b;color:#c0c5ce;" class="language-toml "><code class="language-toml" data-lang="toml"><span>[package.metadata.cargo-semver-checks]
+</span><span style="color:#65737e;"># set the semver level to minor for this lint
+</span><span style="color:#bf616a;">trait_method_now_hidden </span><span>= &quot;</span><span style="color:#a3be8c;">minor</span><span>&quot;
+</span><span style="color:#65737e;"># set the semver level to minor and only emit a warning
+</span><span style="color:#65737e;"># instead of an error on violation for this lint
+</span><span style="color:#bf616a;">repr_c_removed </span><span>= { </span><span style="color:#bf616a;">level </span><span>= &quot;</span><span style="color:#a3be8c;">warn</span><span>&quot;, </span><span style="color:#bf616a;">semver </span><span>= &quot;</span><span style="color:#a3be8c;">minor</span><span>&quot; }
+</span><span style="color:#65737e;"># ignore all lints of this type
+</span><span style="color:#bf616a;">function_export_name_hidden </span><span>= &quot;</span><span style="color:#a3be8c;">allow</span><span>&quot;
+</span></code></pre>
+<p>This will also be added to <code>[workspace.metadata]</code> to configure at the workspace level as well.</p>
+<p>Additionally, I'll focus on adding great and thorough tests and documentation to these additions to make <code>cargo-semver-checks</code> even more correct and easy to use and adopt. I'll be posting updates at least every week under the <a href="/tags/gsoc24"><code>gsoc24</code> tag</a> here to document my progress.</p>
+<h2 id="more-possibilities">more possibilities</h2>
+<p>This added configuration also opens up some more possibilities I'll work on if time allows during the summer or after if needed:</p>
+<ul>
+<li>Add a group of <code>suspicious</code> lints that are not necessarily semver-breaking on their own, but are suspicious; they indicate that something is <em>probably</em> wrong but there is a possibility it does not break semver. These will use the new configuration feature of being <code>warn</code> by default instead of <code>deny</code>, because they are warnings, not errors.</li>
+<li>Allow CI targets like GitHub actions be configured directly in the action configuration for lint-level configuration, which will make it even easier and more flexible to use <code>cargo-semver-checks</code> in a CI pipeline</li>
+<li>Configure whether to apply a lint on a specific module or even item-level basis, such as with attributes as tools like <code>clippy</code> do</li>
+</ul>
+<p>I'm super excited to be able to work on <code>cargo-semver-checks</code> this summer and beyond! Feel free to watch the <a href="/tags/gsoc24"><code>gsoc24</code> tag</a> for updates on what I'm doing. You can also find me on GitHub <a href="https://github.com/suaviloquence">@suaviloquence</a> or by email (listed on my GitHub profile).</p>
+<h1 id="footnotes">footnotes</h1>
+<div class="footnote-definition" id="1"><sup class="footnote-definition-label">1</sup>
+<p>note that this is not always the case: for example, from the cargo semver guide: <em>&quot;Some changes are marked as “minor”, even though they carry the potential risk of breaking a build. This is for situations where the potential is extremely low, and the potentially breaking code is unlikely to be written in idiomatic Rust, or is specifically discouraged from use.&quot;</em></p>
+</div>
+</div>
+
+			</article>
+			<footer>
+				<p>
+				<span id="heart">&lt;3</span> - <a href="https://github.com/suaviloquence/blog" target="_blank">source</a>
+				</p>
+			</footer>
+		</div>
+	</body>
+</html>
+

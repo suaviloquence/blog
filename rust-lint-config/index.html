@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title> How do Rust tools handle lint configuration?   | max's blog</title>
+		<link rel="stylesheet" href="/base.css" />
+	</head>
+	<body class="light">
+		<div id="content">
+			<header>
+				<a href="/">max's blog</a>
+				 &gt;
+<a class="title" href="https://blog.mcarr.one/rust-lint-config/">How do Rust tools handle lint configuration?</a>
+
+			</header>
+			<article>
+				
+<h2 id="subtitle">
+    <span class="date">2024-05-27</span>
+     | tags:
+    <ul id="tags">
+        
+        <li><a href="/tags/gsoc24">gsoc24</a></li>
+        
+        <li><a href="/tags/rust">rust</a></li>
+        
+    </ul>
+    
+</h2>
+
+
+<div id="show-toc">
+    <input id="show-toc-box" type="checkbox" />
+    <label for="show-toc-box">outline</label>
+</div>
+<div id="toc">
+    <ol>
+        
+        <li>
+            <a href="https://blog.mcarr.one/rust-lint-config/#lint-levels">lint levels</a>
+            
+            <ol>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/rust-lint-config/#a-secret-fourth-option"
+                        >a secret fourth option</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/rust-lint-config/#a-fifth-one"
+                        >a fifth one?</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/rust-lint-config/#looking-at-cargo-semver-checks"
+                        >looking at cargo-semver-checks</a
+                    >
+                </li>
+                
+            </ol>
+            
+        </li>
+        
+        <li>
+            <a href="https://blog.mcarr.one/rust-lint-config/#configuration">configuration</a>
+            
+            <ol>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/rust-lint-config/#cli-flags"
+                        >cli flags</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/rust-lint-config/#cargo-toml-tables"
+                        >Cargo.toml tables</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/rust-lint-config/#module-item-attributes"
+                        >module&#x2F;item attributes</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/rust-lint-config/#lint-groups"
+                        >lint groups</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/rust-lint-config/#precedence"
+                        >precedence</a
+                    >
+                </li>
+                
+            </ol>
+            
+        </li>
+        
+        <li>
+            <a href="https://blog.mcarr.one/rust-lint-config/#consistency">consistency</a>
+            
+            <ol>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/rust-lint-config/#annotate-snippets"
+                        >annotate-snippets</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/rust-lint-config/#compiler-lints"
+                        >compiler lints</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/rust-lint-config/#cargo-lints"
+                        >cargo lints</a
+                    >
+                </li>
+                
+                <li>
+                    <a href="https://blog.mcarr.one/rust-lint-config/#consequences-for-cargo-semver-checks"
+                        >consequences for cargo-semver-checks</a
+                    >
+                </li>
+                
+            </ol>
+            
+        </li>
+        
+        <li>
+            <a href="https://blog.mcarr.one/rust-lint-config/#acknowledgements">acknowledgements</a>
+            
+        </li>
+        
+    </ol>
+</div>
+ 
+<h3 class="notice">
+    I'd love to hear any comments, suggestions, or questions you have! You can
+    post them publicly at
+    <a
+        href="https://github.com/suaviloquence/blog/issues/3"
+        target="_blank"
+        >this page's GitHub issue</a
+    >
+    or send me an email at <code>m at mcarr.one</code>
+</h3>
+
+
+<div id="page"><p>As I start to work on <a href="https://blog.mcarr.one/gsoc-24-intro/">adding more lint configuration</a> to <a href="https://github.com/obi1kenobi/cargo-semver-checks"><code>cargo-semver-checks</code></a>, I've been exploring the different ways that tools like <code>rustc</code>, <code>clippy</code>, and <code>cargo</code> handle linting and configuring the levels of each of their lints to make it more consistent for <code>cargo-semver-checks</code>'s configuration.
+Some of it is internal compiler code that we can't really reuse, but there are crates like <a href="https://crates.io/crates/annotate_snippets"><code>annotate-snippets</code></a> are being developed to make it easier and more consistent to create linting tools (in this case, by providing an interface to render diagnostics).
+We can also copy/take inspiration from the interfaces (e.g., command-line flags) of rustc and clippy to make configuration more consistent.</p>
+<h1 id="lint-levels">lint levels</h1>
+<p>The biggest part of configuring lints is to specify how big a problem it is when this lint occurs. If we should raise an error, that's <code>deny</code>. If it should just be a warning: aptly <code>warn</code>. And if, through our configuration or the default configuration, it should not error or raise a warning when this lint is triggered, we <code>allow</code> that lint.</p>
+<h2 id="a-secret-fourth-option">a secret fourth option</h2>
+<p>There's another option in <code>rustc</code>, though, that is even stricter. If we <code>forbid</code> a lint, it's like a stricter version of <code>deny</code>ing it. There are a <a href="https://blog.mcarr.one/rust-lint-config/#configuration">lot of ways</a> to configure lints tools like <code>rustc</code> and <code>clippy</code>, and sometimes you <code>deny</code> a lint (such as the <code>unsafe-code</code> lint) at the module level, for example, but you can still <code>allow</code> or <code>warn</code> an individual <code>unsafe</code> block. If we want to prevent this from happening, we can <code>#![forbid(unsafe_code)]</code>, and this lint will now <em>always</em> be an error, regardless<sup class="footnote-reference"><a href="#forbid">1</a></sup> of other configuration that would otherwise override a <code>deny</code> level.</p>
+<h2 id="a-fifth-one">a fifth one?</h2>
+<p>This one was actually new to me when I was reading the <a href="https://doc.rust-lang.org/rustc/lints/levels.html">rustc lints page</a>. Similar to <code>forbid</code>, there is a <code>force-warn</code> level that will always make a lint emit a warning, even if it is configured to be <code>allow</code> <em>or</em> <code>deny</code> at a higher-precedence config. Unlike <code>forbid</code>, though, <code>force-warn</code> can't even be suppressed by <code>--cap-lints allow</code>. However, it can't be set by an attribute like the other ones, and I personally have not seen it used in the wild yet.</p>
+<h2 id="looking-at-cargo-semver-checks">looking at <code>cargo-semver-checks</code></h2>
+<p>The first three are unambiguously necessary to add to <code>cargo-semver-checks</code> to me, as the whole point of adding this more granular configuration to be able to specify the level of each check.</p>
+<p>I'd love feedback on <code>forbid</code>, though. It requires special handling (to be able to override later configuration on the same lint), and right now, the initial plan is to only add three places to configure the lint: workspace and package <code>Cargo.toml</code> as well as through CLI flags, so adding it might not be as necessary as in <code>rustc</code>, where every module and submodule and item and field can have their own configuration, so it's a lot more helpful to be able to override something at an outer level.</p>
+<p>That being said, if we do add module-level lint configuration, it might be helpful to have <code>forbid</code>, and as a Rust/cargo tool, users might expect to be able to forbid a lint in <code>cargo-semver-checks</code> as in other tools.</p>
+<p>If you have any thoughts on this, I'd love to hear what you think! Feel free to post on the blog <a href="https://github.com/suaviloquence/blog/issues/3">GitHub issue</a> or in the <a href="https://rust-lang.zulipchat.com/#narrow/stream/421156-gsoc/topic/Project.3A.20Adding.20lint.20configuration.20to.20cargo-semver-checks">project Zulip stream</a>.</p>
+<p>As for <code>force-warn</code>, I personally would need some convincing to see why it would be useful to add to <code>cargo-semver-checks</code>, as I haven't even seen it used in <code>rustc</code> lints yet (that I know of).</p>
+<h1 id="configuration">configuration</h1>
+<p>The point of these lint levels is to be able to set them, of course, and there are so many different ways to configure them in the ecosystem.</p>
+<h2 id="cli-flags">cli flags</h2>
+<p>rustc (and clippy, which uses rustc's interface) let the user pass <code>--allow</code>/<code>-A</code>, <code>--warn</code>/<code>-W</code>, <code>--force-warn</code>, <code>--deny</code>/<code>-D</code>, <code>--forbid</code>/<code>-F</code> with the qualified lint name (e.g., <code>clippy::absurd_extreme_comparisons</code> or <code>dead_code</code> == <code>rust::dead_code</code>) to set the lint level at the scope of the compile target. Ideally, a user of <code>cargo-semver-checks</code> would be able to do this for our checks.</p>
+<p><em>note: for rustc-registered lints, these can also be passed to <code>RUSTFLAGS</code></em></p>
+<h2 id="cargo-toml-tables">Cargo.toml tables</h2>
+<p>The <a href="https://rust-lang.github.io/rfcs/3389-manifest-lint.html"><code>[lints]</code></a> (<a href="https://doc.rust-lang.org/nightly/cargo/reference/manifest.html#the-lints-section">cargo book</a>) table in the Cargo manifest was added to declare package or workspace-scope lint levels. Currently, this only works with <code>rust</code>, <code>clippy</code>, and <code>rustdoc</code> lints, so <code>cargo-semver-checks</code> would not be able to use it as of yet. However, we can simulate the syntax in a <code>[{package,workspace}.metadata]</code> subtable until it is stable for third-party tools to have entries in the lints table.</p>
+<h2 id="module-item-attributes">module/item attributes</h2>
+<p>For rustc lints, you can add configuration like <code>#![allow(lint)]</code> outer attribute to a module as well as attributes like <code>#[warn(lint)]</code> on an inner item itself to apply that configuration to just the module/item. Currently, <code>cargo-semver-checks</code> has a less granular version of this by adding <span class="nobr"><code>#[doc(hidden)]</code></span> to an item to exempt it from semver guarantees, but adding this is a breaking change.</p>
+<h2 id="lint-groups">lint groups</h2>
+<p>Lints in rustc and clippy are organized into groups/collections of lints that can all be configured at once (e.g., <code>#[warn(clippy::pedantic)]</code>). It's definitely a goal of <code>cargo-semver-checks</code> to implement this as well, for instance with a <code>suspicious</code> group of warn-by-default lints that are not necessarily breaking changes at all times, but usually indicate breakage of a semver guarantee somewhere.</p>
+<h2 id="precedence">precedence</h2>
+<p>When there are multiple levels set for a given lint, we have to figure out which one takes priority, which can get complicated:</p>
+<ul>
+<li>
+<p>later CLI flags take priority over earlier CLI flags (<code>--deny clippy::cast_sign_loss --allow clippy::pedantic --warn clippy::cast_possible_truncation</code>) would make <code>cast_possible_truncation</code> warn, but <code>cast_sign_loss</code> allow (both lints are in the <code>pedantic</code> group).</p>
+</li>
+<li>
+<p>the <code>[lints]</code> table has a <code>priority</code> key for each entry, such that lower is a lower priority, and higher higher (default is zero if not set). Because in TOML key order is not guaranteed, the order of the lints in the lint table should not be used for configuration, and users should set <code>priority</code> instead if there is a conflict.</p>
+</li>
+<li>
+<p><code>rustc</code> uses a stack of <a href="https://github.com/rust-lang/rust/blob/f00b02e6bbe63707503f058fb87cc3e2b25991ac/compiler/rustc_lint/src/levels.rs#L75"><code>LintSet</code></a>s, based on how deep the scope is where the configuration is added (i.e., an item is on the top of the stack, its module is in the middle, and command line flags are at the bottom of the stack)</p>
+</li>
+<li>
+<p>CLI flags override the <code>[lints]</code> table</p>
+<details>
+<summary>test for this</summary>
+<p>Cargo.toml:</p>
+<pre data-lang="toml" style="background-color:#2b303b;color:#c0c5ce;" class="language-toml "><code class="language-toml" data-lang="toml"><span style="color:#65737e;"># ...
+</span><span>[lints]
+</span><span style="color:#bf616a;">unused_variables </span><span>= &quot;</span><span style="color:#a3be8c;">deny</span><span>&quot;
+</span></code></pre>
+<p>main.rs:</p>
+<pre data-lang="rust" style="background-color:#2b303b;color:#c0c5ce;" class="language-rust "><code class="language-rust" data-lang="rust"><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">main</span><span>() {
+</span><span>    </span><span style="color:#b48ead;">unsafe </span><span>{};
+</span><span>}
+</span></code></pre>
+<p><code>$ cargo clippy</code>:</p>
+<pre style="background-color:#2b303b;color:#c0c5ce;"><code><span>cargo clippy
+</span><span>    Checking tst v0.1.0 (/tmp/tst)
+</span><span>error: unused variable: `a`
+</span><span> --&gt; src/main.rs:2:9
+</span><span>  |
+</span><span>2 |     let a = 0;
+</span><span>  |         ^ help: if this is intentional, prefix it with an underscore: `_a`
+</span><span>  |
+</span><span>  = note: requested on the command line with `-D unused-variables`
+</span><span>
+</span><span>error: could not compile `tst` (bin &quot;tst&quot;) due to 1 previous error
+</span></code></pre>
+<p><code>$ cargo clippy -- -Aunused_variables</code></p>
+<pre style="background-color:#2b303b;color:#c0c5ce;"><code><span>Checking tst v0.1.0 (/tmp/tst)
+</span><span>Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.05s
+</span></code></pre>
+</details>
+</li>
+<li>
+<p>and of course, if <code>forbid</code> is found at any point, it overrides any other configuration</p>
+</li>
+</ul>
+<p>Looking at <code>cargo-semver-checks</code>, we would need to calculate this precedence ourselves, at least right now. However, it seems like we would just need to worry about CLI flags, package tables, and workspace tables, and potentially <code>forbid</code>, as you can't annotate an item or module. Additionally, we want to be able to configure the <em>required semver version bump</em> as well as the lint level. There is the future possibility of configuring this (i.e., tool-specified configuration) in the <code>[lints]</code> table, such as <code>enum_missing = { level = &quot;warn&quot;, semver = &quot;minor&quot; }</code>, but this functionality is not available in the <code>[lints]</code> table yet. However, we can add it to our own <code>[package.metadata]</code> table, then integrate with <code>[lints]</code> when we can. However, we would need our own way to configure this at the command line, as there's little precedent for providing arguments to lints in tools like clippy.</p>
+<h1 id="consistency">consistency</h1>
+<h2 id="annotate-snippets">annotate-snippets</h2>
+<p><a href="https://crates.io/crates/annotate_snippets"><code>annotate-snippets</code></a> is a crate that creates <code>rustc</code>-like formatted diagnostics for code. You can provide it with level, text, and attach other related diagnostics to the error message.</p>
+<p><code>cargo</code>'s linting tool is <a href="https://github.com/rust-lang/cargo/blob/95eeafa3ba513a630d32aecf2818734aeb06b540/src/cargo/util/lints.rs#L6">currently using it</a>, but tools like <code>rustc</code> and <code>clippy</code> are using <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagCtxt.html">rustc-internal diagnostic rendering</a></p>
+<h2 id="compiler-lints">compiler lints</h2>
+<p>Tools like <code>clippy</code> register with <code>rustc</code>'s linter using <a href="https://doc.rust-lang.org/stable/nightly-rustc/rustc_lint_defs/macro.declare_tool_lint.html"><code>declare_tool_lint!</code></a>. <code>rustc</code> then handles configuration of lint levels and running the lints as necessary, and the tools define the behavior.</p>
+<h2 id="cargo-lints">cargo lints</h2>
+<p>When lints have to run over a crate (including a <code>Cargo.toml</code> manifest), it makes less sense to use <code>rustc</code>'s lint handling. cargo's linting is relatively new, and it seems to roll its own configuration, at least for now. (see <a href="https://github.com/rust-lang/cargo/blob/master/src/cargo/util/lints.rs#L263"><code>struct Lint</code></a> and <a href="https://github.com/rust-lang/cargo/blob/95eeafa3ba513a630d32aecf2818734aeb06b540/src/cargo/util/lints.rs#L386"><code>level_priority</code></a>)</p>
+<h2 id="consequences-for-cargo-semver-checks">consequences for <code>cargo-semver-checks</code></h2>
+<p>The lints in <code>cargo-semver-checks</code> are much closer to cargo's than those of rustc and clippy<sup class="footnote-reference"><a href="#clippy-cargo">2</a></sup>. Because we need access to the whole API of a crate (and a comparison baseline version of that crate), it doesn't seem very feasible to use compiler lints.</p>
+<p>What <code>cargo-semver-checks</code> does differently than other tools is that lints are created <em>declaratively</em> with a <a href="https://github.com/obi1kenobi/trustfall">Trustfall</a> query over the crate's API, instead of as a Rust constant. This means that once/if cargo exposes the functionality for third-party crates to register cargo lints, it may not be plug-and-play (especially if it expects something with a <code>'static</code> lifetime, as we need to parse them at runtime).</p>
+<p>I'm not sure how well we can integrate with cargo lints right now, and it seems like I will have to write my own level precedence calculator. However, we definitely want to design to integrate with cargo in the future, and if you have any suggestions for how to do that, I'd love to hear them. Additionally, maintaining interface (like CLI) compatibility with tools like rustc is also a goal as much as we can, even if we don't use the same lint mechanisms under the hood.</p>
+<h1 id="acknowledgements">acknowledgements</h1>
+<p>Thanks to Ed Page, Scott Schafer, and Predrag Gruevski for great info and pointers, especially about <code>annotate-snippets</code> and cargo's linting in the <a href="https://rust-lang.zulipchat.com/#narrow/stream/421156-gsoc/topic/Project.3A.20Adding.20lint.20configuration.20to.20cargo-semver-checks">Zulip thread</a>.</p>
+<p>Again, I'd love to hear any feedback, either in the Zulip, as a comment on the GitHub issue for this post, or by email.</p>
+<hr />
+<div class="footnote-definition" id="forbid"><sup class="footnote-definition-label">1</sup>
+<p>In <code>rustc</code>, you can pass <code>--cap-lints [level]</code> and it will suppress all lints at a stricter level by capping them to the passed level. This makes even something with <code>forbid</code> an <code>allow</code> or <code>warn</code> if capped.</p>
+</div>
+<hr />
+<div class="footnote-definition" id="clippy-cargo"><sup class="footnote-definition-label">2</sup>
+<p>Although <code>clippy</code> has cargo integration and lints parts of Cargo.toml as well; see <a href="https://github.com/rust-lang/rust-clippy/blob/76eee82e79e736c4cef6ee9f755f58e752b9f58a/clippy_lints/src/cargo/mod.rs"><code>cargo/mod.rs</code></a> (it makes a <code>Cargo</code> lint pass, and calls <code>cargo metadata</code> - we could technically do this for <code>cargo-semver-checks</code>, but we would need a lot of refactoring, and it would be a little hacky)</p>
+</div>
+</div>
+
+			</article>
+			<footer>
+				<p>
+				<span id="heart">&lt;3</span> - <a href="https://github.com/suaviloquence/blog" target="_blank">source</a>
+				</p>
+			</footer>
+		</div>
+	</body>
+</html>
+
